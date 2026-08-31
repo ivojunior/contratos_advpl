@@ -14,7 +14,7 @@ A solução é composta por 3 tabelas customizadas e 3 rotinas:
 
 | Fonte | Rotina | Descrição |
 |---|---|---|
-| `src/dictionary/UPDDICT.prw` | `U_UPDDICT()` | Cria os campos/tabelas/índices no dicionário de dados (SX2/SX3/SIX) |
+| `src/dictionary/especificacao_dicionario.md` | — | Especificação das tabelas/campos/índices `ZC1`, `ZC2` e `ZC3` para cadastro no Configurador (ver observação abaixo) |
 | `src/contratos/ZCT010.prw` | `ZCT010` | Cadastro (MVC) dos contratos de fornecedores |
 | `src/contratos/ZCT030.prw` | `ZCT030` | Cadastro auxiliar dos índices de reajuste (ZC3) |
 | `src/contratos/ZCT020.prw` | `ZCT020` / `U_ZCT020JOB()` | Geração mensal dos pedidos de compra referentes à mensalidade vigente |
@@ -22,11 +22,10 @@ A solução é composta por 3 tabelas customizadas e 3 rotinas:
 
 ## Como instalar
 
-1. Compilar todos os fontes de `src/` no RPO do ambiente (via TDS/AppServer).
-2. Executar `U_UPDDICT()` uma única vez para gravar a estrutura das tabelas `ZC1`, `ZC2` e `ZC3` no dicionário de dados.
-3. Acessar o **Configurador (SIGACFG) > Base de Dados > Dicionário de Dados** e rodar a atualização/materialização de base para que as tabelas sejam criadas fisicamente no RDBMS.
-4. Incluir `ZCT010` (Contratos), `ZCT030` (Índices) e `ZCT020` (Geração Mensal) no menu do módulo desejado (ex: Compras/SIGACOM), associando os respectivos `CtrlClass`/programas no **Configurador > Ambiente > Cadastros > Menu**.
-5. (Opcional) Cadastrar `U_ZCT020JOB()` no **Agendador de Tarefas (Schedule)** do Configurador para rodar automaticamente todo início de mês, dispensando execução manual.
+1. Criar as tabelas `ZC1`, `ZC2` e `ZC3` (campos e índices) pelo **Configurador (SIGACFG) > Base de Dados > Dicionário de Dados**, seguindo a especificação em `src/dictionary/especificacao_dicionario.md`. Essa é a única forma suportada de criar/alterar dicionário de dados no Protheus — ver observação abaixo sobre por que não há um fonte `.prw` fazendo isso automaticamente.
+2. Compilar todos os fontes de `src/contratos` no RPO do ambiente (via TDS/AppServer).
+3. Incluir `ZCT010` (Contratos), `ZCT030` (Índices) e `ZCT020` (Geração Mensal) no menu do módulo desejado (ex: Compras/SIGACOM), associando os respectivos `CtrlClass`/programas no **Configurador > Ambiente > Cadastros > Menu**.
+4. (Opcional) Cadastrar `U_ZCT020JOB()` no **Agendador de Tarefas (Schedule)** do Configurador para rodar automaticamente todo início de mês, dispensando execução manual.
 
 ## Fluxo de uso
 
@@ -43,7 +42,9 @@ A rotina pode ser executada em modo simulação (sem gerar pedidos, apenas exibi
 
 ## Observações de implementação
 
-- O fonte `UPDDICT.prw` grava a definição das tabelas diretamente no SX2/SX3/SIX; ele não substitui a etapa de materialização física da tabela no banco (feita pelo próprio Protheus/Configurador).
+- A criação do dicionário de dados **não é feita por fonte AdvPL**. O TOTVS CodeAnalysis reprova (regra `CA2004-2`) qualquer acesso direto (`RecLock`/gravação) às tabelas de metadados `SX1/SX2/SX3/SIX`, e mesmo que a gravação fosse feita dessa forma, a criação física da tabela no RDBMS só ocorre quando realizada pelo próprio Configurador. Por isso a estrutura das tabelas está documentada em `src/dictionary/especificacao_dicionario.md` para cadastro manual (ou importação de pacote de dicionário exportado do Configurador).
 - Os nomes de rotina (`ZCT010`, `ZCT020`, `ZCT030`) e os campos (`ZC1_*`, `ZC2_*`, `ZC3_*`) seguem a faixa reservada a customizações (`Z*`); ajuste os prefixos se já existir convenção própria no ambiente.
 - A geração do pedido usa `MATA120` via `MSExecAuto` (inclusão, tipo `3`); campos adicionais obrigatórios no ambiente (ex: natureza, tipo de pedido) podem precisar ser incluídos em `ZCTGeraPC()` conforme a parametrização de Compras da empresa.
 - Este código foi desenvolvido como referência funcional seguindo os padrões MVC do Protheus 12; pequenos ajustes de API podem ser necessários conforme a versão exata do `TOTVS Application Server`/build em uso.
+- `ZCTFUN.prw` carrega os percentuais de `ZC3` uma única vez por execução (`ZCTCarregaZC3()`) e repassa o resultado em memória para `ZCTValIndice()`, em vez de consultar o banco a cada contrato dentro do laço de `ZCT020` — evita o padrão de "chamada de API/SQL dentro de laço" sinalizado pelo CodeAnalysis.
+- Em `ZCTGeraPC()`, `lMsErroAuto` e `lAutoErrNoFile` são declaradas `Private` (nunca `Local`): o `MSExecAuto`/`MATA120` sinaliza erro por escopo dinâmico de variáveis Private, e `lAutoErrNoFile` é o que desvia o log para `GetAutoGRLog()` (que retorna um array de linhas, não uma string) em vez de gravar em arquivo/tela — necessário para a rotina funcionar tanto interativa quanto via job desassistido.

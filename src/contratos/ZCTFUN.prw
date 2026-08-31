@@ -33,40 +33,62 @@ Monta a competencia AAAAMM a partir de uma data.
 User Function ZCTCompet(dData)
 Return StrZero(Year(dData),4)+StrZero(Month(dData),2)
 
+/*/{Protheus.doc} ZCTCarregaZC3
+Carrega em memoria todos os percentuais de indice cadastrados (ZC3) da
+filial corrente. Deve ser chamada uma unica vez antes de processar um
+lote de contratos (ex: no inicio de ZCT020), e o retorno repassado a
+ZCTValIndice(), evitando abrir uma consulta a banco para cada contrato
+processado dentro do laco de geracao.
+@return array de {ZC3_INDICE, ZC3_COMPET, ZC3_PERC}
+/*/
+User Function ZCTCarregaZC3()
+    Local aZC3      := {}
+    Local cAliasZC3 := GetNextAlias()
+
+    BeginSql Alias cAliasZC3
+        SELECT ZC3_INDICE, ZC3_COMPET, ZC3_PERC
+          FROM %table:ZC3% ZC3
+         WHERE ZC3_FILIAL = %xFilial:ZC3%
+           AND ZC3.%NotDel%
+    EndSql
+
+    While !(cAliasZC3)->(Eof())
+        aAdd(aZC3,{(cAliasZC3)->ZC3_INDICE,(cAliasZC3)->ZC3_COMPET,(cAliasZC3)->ZC3_PERC})
+        (cAliasZC3)->(DbSkip())
+    End
+    (cAliasZC3)->(DbCloseArea())
+Return aZC3
+
 /*/{Protheus.doc} ZCTValIndice
-Calcula o percentual de reajuste acumulado de um indice (tabela ZC3)
-entre duas competencias (exclusive a inicial, inclusive a final).
+Calcula o percentual de reajuste acumulado de um indice entre duas
+competencias (exclusive a inicial, inclusive a final), a partir do
+array em memoria retornado por ZCTCarregaZC3().
 @param cIndice Codigo do indice (ZC3_INDICE)
 @param dDtIni  Data do ultimo reajuste (ou inicio do contrato se nunca reajustado)
 @param dDtFim  Data base do calculo (normalmente a data de processamento)
+@param aZC3    Array pre-carregado por ZCTCarregaZC3(); se omitido, a
+               funcao carrega sozinha (uso individual/pontual, fora de laco)
 @return numeric Percentual acumulado (ex: 5.23 = 5,23%)
 /*/
-User Function ZCTValIndice(cIndice,dDtIni,dDtFim)
-    Local cCompIni  := U_ZCTCompet(dDtIni)
-    Local cCompFim  := U_ZCTCompet(dDtFim)
-    Local nFator    := 1
-    Local cAliasZC3 := GetNextAlias()
+User Function ZCTValIndice(cIndice,dDtIni,dDtFim,aZC3)
+    Local cCompIni := U_ZCTCompet(dDtIni)
+    Local cCompFim := U_ZCTCompet(dDtFim)
+    Local nFator   := 1
+    Local nI
 
     If Empty(cIndice)
         Return 0
     EndIf
 
-    BeginSql Alias cAliasZC3
-        SELECT ZC3_PERC
-          FROM %table:ZC3% ZC3
-         WHERE ZC3_FILIAL = %xFilial:ZC3%
-           AND ZC3_INDICE = %exp:cIndice%
-           AND ZC3_COMPET > %exp:cCompIni%
-           AND ZC3_COMPET <= %exp:cCompFim%
-           AND ZC3.%NotDel%
-         ORDER BY ZC3_COMPET
-    EndSql
+    If aZC3 == Nil
+        aZC3 := U_ZCTCarregaZC3()
+    EndIf
 
-    While !(cAliasZC3)->(Eof())
-        nFator *= (1 + ((cAliasZC3)->ZC3_PERC / 100))
-        (cAliasZC3)->(DbSkip())
-    End
-    (cAliasZC3)->(DbCloseArea())
+    For nI := 1 To Len(aZC3)
+        If aZC3[nI][1] == cIndice .And. aZC3[nI][2] > cCompIni .And. aZC3[nI][2] <= cCompFim
+            nFator *= (1 + (aZC3[nI][3] / 100))
+        EndIf
+    Next nI
 Return Round((nFator - 1) * 100, 4)
 
 /*/{Protheus.doc} ZCTGeraPC
@@ -79,13 +101,20 @@ contrato, atraves de MSExecAuto (MATA120).
 @return array {lOk, cNumPC, cMsgErro}
 /*/
 User Function ZCTGeraPC(cContrato,dDtEmiss,nValor)
-    Local aArea     := ZC1->(GetArea())
-    Local aCabec    := {}
-    Local aItens    := {}
-    Local aLinha    := {}
-    Local lMsErroAuto:= .F.
-    Local cNumPC    := ""
-    Local cMsgErro  := ""
+    Local aArea      := ZC1->(GetArea())
+    Local aCabec     := {}
+    Local aItens     := {}
+    Local aLinha     := {}
+    Local cNumPC     := ""
+    Local cMsgErro   := ""
+    Local aLog       := {}
+    Local nI
+    // lMsErroAuto/lAutoErrNoFile precisam ser Private: o MSExecAuto/MATA120
+    // sinaliza o resultado atraves dessas variaveis por escopo dinamico
+    // (nao funcionam como Local) e lAutoErrNoFile e o que desvia o log de
+    // erro para GetAutoGRLog() em vez de gravar em arquivo/tela.
+    Private lMsErroAuto    := .F.
+    Private lAutoErrNoFile := .T.
 
     DbSelectArea("ZC1")
     ZC1->(DbSetOrder(1))
@@ -114,11 +143,14 @@ User Function ZCTGeraPC(cContrato,dDtEmiss,nValor)
     aAdd(aLinha,{"C7_DATPRF"  ,dDtEmiss                   ,Nil})
     aAdd(aItens,aLinha)
 
-    lMsErroAuto := .F.
     MSExecAuto({|x,y,z,w| Mata120(x,y,z,w)}, aCabec, aItens, 3)
 
     If lMsErroAuto
-        cMsgErro := "Erro ao gerar pedido do contrato "+cContrato+": "+GetAutoGRLog()
+        aLog := GetAutoGRLog()
+        For nI := 1 To Len(aLog)
+            cMsgErro += If(Empty(cMsgErro),"",CRLF) + aLog[nI]
+        Next nI
+        cMsgErro := "Erro ao gerar pedido do contrato "+cContrato+": "+cMsgErro
     Else
         cNumPC := SC7->C7_NUM
     EndIf

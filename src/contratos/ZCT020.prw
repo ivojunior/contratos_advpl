@@ -1,8 +1,6 @@
 #include "protheus.ch"
 #include "parmtype.ch"
 
-Static cLogProc := ""
-
 /*/{Protheus.doc} ZCT020
 Geracao mensal de Pedidos de Compra referentes a mensalidade vigente dos
 contratos de fornecedores cadastrados (ZC1). Uso interativo: solicita a
@@ -56,8 +54,7 @@ Static Function ProcessaContratos(dDataProc,lGerar,lInterativo)
     Local nOk        := 0
     Local nErro      := 0
     Local aResult    := {}
-
-    cLogProc := ""
+    Local aZC3       := U_ZCTCarregaZC3()
 
     BeginSql Alias cAliasQry
         SELECT ZC1_CONTRA
@@ -72,7 +69,7 @@ Static Function ProcessaContratos(dDataProc,lGerar,lInterativo)
     EndSql
 
     While !(cAliasQry)->(Eof())
-        aAdd(aResult, ProcessaUmContrato((cAliasQry)->ZC1_CONTRA, dDataProc, cCompet, lGerar))
+        aAdd(aResult, ProcessaUmContrato((cAliasQry)->ZC1_CONTRA, dDataProc, cCompet, lGerar, aZC3))
         If ATail(aResult)[2]
             nOk++
         Else
@@ -90,9 +87,11 @@ Return
 /*/{Protheus.doc} ProcessaUmContrato
 Processa um unico contrato: aplica reajuste (se aplicavel), gera o
 pedido de compra e atualiza os contadores/status do contrato.
+@param aZC3 Array de indices pre-carregado por U_ZCTCarregaZC3() (ver
+            ProcessaContratos) — evita consultar ZC3 a cada contrato.
 @return array {cContrato, lOk, cMsg}
 /*/
-Static Function ProcessaUmContrato(cContrato,dDataProc,cCompet,lGerar)
+Static Function ProcessaUmContrato(cContrato,dDataProc,cCompet,lGerar,aZC3)
     Local aArea      := ZC1->(GetArea())
     Local lOk        := .T.
     Local cMsg       := ""
@@ -114,7 +113,7 @@ Static Function ProcessaUmContrato(cContrato,dDataProc,cCompet,lGerar)
     If !Empty(ZC1->ZC1_INDICE) .And. ZC1->ZC1_PERREA > 0
         dBaseReaj := If(Empty(ZC1->ZC1_DTULTR), ZC1->ZC1_DTINI, ZC1->ZC1_DTULTR)
         If U_ZCTMesesEntre(dBaseReaj,dDataProc) >= ZC1->ZC1_PERREA
-            nPercReaj := U_ZCTValIndice(ZC1->ZC1_INDICE,dBaseReaj,dDataProc)
+            nPercReaj := U_ZCTValIndice(ZC1->ZC1_INDICE,dBaseReaj,dDataProc,aZC3)
             If nPercReaj <> 0
                 nValorAtu := Round(ZC1->ZC1_VALOR * (1 + nPercReaj/100), 2)
             EndIf
@@ -130,7 +129,6 @@ Static Function ProcessaUmContrato(cContrato,dDataProc,cCompet,lGerar)
     aGeraPC := U_ZCTGeraPC(cContrato,dDataProc,nValorAtu)
 
     If !aGeraPC[1]
-        cLogProc += aGeraPC[3] + CRLF
         ZC1->(RestArea(aArea))
         Return {cContrato,.F.,aGeraPC[3]}
     EndIf
