@@ -33,6 +33,32 @@ Monta a competencia AAAAMM a partir de uma data.
 User Function ZCTCompet(dData)
 Return StrZero(Year(dData),4)+StrZero(Month(dData),2)
 
+/*/{Protheus.doc} ZCTUltimoDiaMes
+Retorna a data do ultimo dia do mes da data informada.
+/*/
+User Function ZCTUltimoDiaMes(dData)
+    Local nAno := Year(dData)
+    Local nMes := Month(dData) + 1
+
+    If nMes > 12
+        nMes := 1
+        nAno++
+    EndIf
+Return STOD(StrZero(nAno,4)+StrZero(nMes,2)+"01") - 1
+
+/*/{Protheus.doc} ZCTSomaMes
+Soma (ou subtrai) uma quantidade de meses a uma data, preservando o dia
+quando possivel (ajusta para o ultimo dia do mes destino quando o dia
+de origem nao existir nele, ex: 31/01 + 1 mes = 28/02 ou 29/02).
+/*/
+User Function ZCTSomaMes(dData,nMeses)
+    Local nTotMes := Year(dData)*12 + (Month(dData)-1) + nMeses
+    Local nAno    := Int(nTotMes/12)
+    Local nMes    := (nTotMes % 12) + 1
+    Local dPrimeiro := STOD(StrZero(nAno,4)+StrZero(nMes,2)+"01")
+    Local nDia    := Min(Day(dData), Day(U_ZCTUltimoDiaMes(dPrimeiro)))
+Return dPrimeiro + nDia - 1
+
 /*/{Protheus.doc} ZCTCarregaZC3
 Carrega em memoria todos os percentuais de indice cadastrados (ZC3) da
 filial corrente. Deve ser chamada uma unica vez antes de processar um
@@ -157,3 +183,118 @@ User Function ZCTGeraPC(cContrato,dDtEmiss,nValor)
 
     ZC1->(RestArea(aArea))
 Return {!lMsErroAuto, cNumPC, cMsgErro}
+
+/*/{Protheus.doc} ZCTIncluiPR
+Cria um titulo de Previsao (SE2, E2_TIPO="PR") no Contas a Pagar
+referente a uma parcela futura de um contrato, via MSExecAuto/FINA050,
+para que o analista financeiro visualize o comprometimento futuro antes
+de existir a fatura real. Usado pela rotina de Previsao Financeira
+(ZCT040).
+@param cContrato Numero do contrato (ZC1_CONTRA, ate 9 posicoes)
+@param cParc     Sequencial da parcela dentro do contrato ("0001","0002",...)
+@param dVenc     Data de vencimento previsto da parcela
+@param nValor    Valor previsto da parcela (valor vigente do contrato)
+@return array {lOk, cPrefixo, cNumTit, cParcTit, cMsgErro}
+/*/
+User Function ZCTIncluiPR(cContrato,cParc,dVenc,nValor)
+    Local aArea    := ZC1->(GetArea())
+    Local aCabec   := {}
+    Local cPrefixo := "PR"
+    Local cNumTit  := Left(cContrato,9)
+    Local cParcTit := "01"
+    Local cMsgErro := ""
+    Local aLog     := {}
+    Local nI
+    // Ver nota em ZCTGeraPC: lMsErroAuto/lAutoErrNoFile precisam ser Private.
+    Private lMsErroAuto    := .F.
+    Private lAutoErrNoFile := .T.
+
+    ZC1->(DbSetOrder(1))
+    If !ZC1->(DbSeek(xFilial("ZC1")+cContrato))
+        ZC1->(RestArea(aArea))
+        Return {.F.,"","","","Contrato "+cContrato+" nao localizado."}
+    EndIf
+
+    aAdd(aCabec,{"E2_FILIAL" ,xFilial("SE2")   ,Nil})
+    aAdd(aCabec,{"E2_PREFIXO",cPrefixo         ,Nil})
+    aAdd(aCabec,{"E2_NUM"    ,cNumTit          ,Nil})
+    aAdd(aCabec,{"E2_PARCELA",cParcTit         ,Nil})
+    aAdd(aCabec,{"E2_TIPO"   ,"PR"             ,Nil})
+    aAdd(aCabec,{"E2_FORNECE",ZC1->ZC1_FORNEC  ,Nil})
+    aAdd(aCabec,{"E2_LOJA"   ,ZC1->ZC1_LOJA    ,Nil})
+    aAdd(aCabec,{"E2_NATUREZ",ZC1->ZC1_NATUR   ,Nil})
+    aAdd(aCabec,{"E2_EMISSAO",MsDate()         ,Nil})
+    aAdd(aCabec,{"E2_VENCTO" ,dVenc            ,Nil})
+    aAdd(aCabec,{"E2_VENCREA",dVenc            ,Nil})
+    aAdd(aCabec,{"E2_VALOR"  ,nValor           ,Nil})
+    aAdd(aCabec,{"E2_MOEDA"  ,1                ,Nil})
+    aAdd(aCabec,{"E2_HIST"   ,"Previsao ctr. "+cContrato+" parc. "+cParc,Nil})
+
+    MSExecAuto({|x,y| FINA050(x,y)}, aCabec, 3)
+
+    If lMsErroAuto
+        aLog := GetAutoGRLog()
+        For nI := 1 To Len(aLog)
+            cMsgErro += If(Empty(cMsgErro),"",CRLF) + aLog[nI]
+        Next nI
+        cMsgErro := "Erro ao gerar previsao do contrato "+cContrato+" parcela "+cParc+": "+cMsgErro
+    EndIf
+
+    ZC1->(RestArea(aArea))
+Return {!lMsErroAuto, cPrefixo, cNumTit, cParcTit, cMsgErro}
+
+/*/{Protheus.doc} ZCTExcluiPR
+Exclui um titulo de Previsao (SE2, E2_TIPO="PR") via MSExecAuto/FINA050,
+usado quando a parcela correspondente ja foi atendida/faturada (ou o
+contrato deixou de estar ativo) e a previsao perde o sentido.
+
+IMPORTANTE: ao contrario da inclusao, a exclusao via ExecAuto do
+FINA050 opera sobre o registro CORRENTE da SE2 — por isso esta funcao
+sempre posiciona explicitamente a SE2 na chave informada e confere
+E2_TIPO="PR" antes de excluir, para nunca acabar excluindo "o primeiro
+registro encontrado" por falta de posicionamento (armadilha conhecida
+e amplamente relatada no uso do FINA050 via ExecAuto). Testar em
+homologacao antes de usar em producao.
+@return array {lOk, cMsgErro}
+/*/
+User Function ZCTExcluiPR(cPrefixo,cNumTit,cParcTit,cFornec,cLoja)
+    Local aArea    := SE2->(GetArea())
+    Local aCabec   := {}
+    Local cMsgErro := ""
+    Local aLog     := {}
+    Local nI
+    Private lMsErroAuto    := .F.
+    Private lAutoErrNoFile := .T.
+
+    DbSelectArea("SE2")
+    SE2->(DbSetOrder(1)) //E2_FILIAL+E2_PREFIXO+E2_NUM+E2_PARCELA+E2_TIPO+E2_FORNECE+E2_LOJA
+    If !SE2->(DbSeek(xFilial("SE2")+cPrefixo+cNumTit+cParcTit+"PR"+cFornec+cLoja))
+        SE2->(RestArea(aArea))
+        Return {.T.,""} //titulo ja nao existe: nada a fazer
+    EndIf
+
+    If SE2->E2_TIPO <> "PR"
+        SE2->(RestArea(aArea))
+        Return {.F.,"Titulo "+cPrefixo+" "+cNumTit+"/"+cParcTit+" nao e do tipo Previsao (PR); exclusao abortada por seguranca."}
+    EndIf
+
+    aAdd(aCabec,{"E2_FILIAL" ,SE2->E2_FILIAL ,Nil})
+    aAdd(aCabec,{"E2_PREFIXO",SE2->E2_PREFIXO,Nil})
+    aAdd(aCabec,{"E2_NUM"    ,SE2->E2_NUM    ,Nil})
+    aAdd(aCabec,{"E2_PARCELA",SE2->E2_PARCELA,Nil})
+    aAdd(aCabec,{"E2_TIPO"   ,SE2->E2_TIPO   ,Nil})
+    aAdd(aCabec,{"E2_FORNECE",SE2->E2_FORNECE,Nil})
+    aAdd(aCabec,{"E2_LOJA"   ,SE2->E2_LOJA   ,Nil})
+
+    MSExecAuto({|x,y| FINA050(x,y)}, aCabec, 5)
+
+    If lMsErroAuto
+        aLog := GetAutoGRLog()
+        For nI := 1 To Len(aLog)
+            cMsgErro += If(Empty(cMsgErro),"",CRLF) + aLog[nI]
+        Next nI
+        cMsgErro := "Erro ao excluir previsao "+cPrefixo+" "+cNumTit+"/"+cParcTit+": "+cMsgErro
+    EndIf
+
+    SE2->(RestArea(aArea))
+Return {!lMsErroAuto, cMsgErro}

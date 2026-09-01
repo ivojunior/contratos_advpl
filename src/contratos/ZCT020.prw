@@ -49,12 +49,16 @@ compra e atualiza os contadores de mensalidades do contrato.
 Static Function ProcessaContratos(dDataProc,lGerar,lInterativo)
     Local cCompet    := U_ZCTCompet(dDataProc)
     Local dPrimeiro  := STOD(SubStr(DtoS(dDataProc),1,6)+"01")
-    Local dUltimo    := UltimoDiaMes(dDataProc)
+    Local dUltimo    := U_ZCTUltimoDiaMes(dDataProc)
     Local cAliasQry  := GetNextAlias()
     Local nOk        := 0
     Local nErro      := 0
     Local aResult    := {}
     Local aZC3       := U_ZCTCarregaZC3()
+
+    // baixa/cancela previsoes (SE2 tipo "PR") ja atendidas ou de
+    // contratos inativos antes de gerar as novas parcelas do mes
+    U_ZCTBaixaPrevisoes("")
 
     BeginSql Alias cAliasQry
         SELECT ZC1_CONTRA
@@ -185,19 +189,6 @@ Static Function ZC2ProxSeq(cContrato)
     EndIf
     ZC2->(RestArea(aArea))
 Return nSeq
-
-/*/{Protheus.doc} UltimoDiaMes
-Retorna a data do ultimo dia do mes da data informada.
-/*/
-Static Function UltimoDiaMes(dData)
-    Local nAno := Year(dData)
-    Local nMes := Month(dData) + 1
-
-    If nMes > 12
-        nMes := 1
-        nAno++
-    EndIf
-Return STOD(StrZero(nAno,4)+StrZero(nMes,2)+"01") - 1
 
 /*/{Protheus.doc} MostraResultado
 Exibe ao usuario o resultado do processamento (contratos processados
