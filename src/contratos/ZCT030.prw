@@ -47,7 +47,7 @@ Static Function ViewDef()
 
     oView := FWFormView():New()
     oView:SetModel(oModel)
-    oView:AddField("VIEW_ZC3","ZC3MASTER",oStruZC3)
+    oView:AddField("VIEW_ZC3",oStruZC3,"ZC3MASTER")
     oView:CreateHorizontalBox("TELA",100)
     oView:SetOwnerView("VIEW_ZC3","TELA")
 Return oView
