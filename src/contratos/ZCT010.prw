@@ -49,8 +49,8 @@ Static Function ModelDef()
     Local oStruZC1 := FWFormStruct(1,ZCT010_TABLE)
     Local oModel
 
-    oStruZC1:SetProperty("ZC1_STATUS",MODEL_FIELD_INIPAD,"1")
-    oStruZC1:SetProperty("ZC1_QTDEMI",MODEL_FIELD_INIPAD,0)
+    oStruZC1:SetProperty("ZC1_STATUS",MODEL_FIELD_INIT,FwBuildFeature(STRUCT_FEATURE_INIPAD,'"1"'))
+    oStruZC1:SetProperty("ZC1_QTDEMI",MODEL_FIELD_INIT,FwBuildFeature(STRUCT_FEATURE_INIPAD,'0'))
 
     oModel := MPFormModel():New("ZCT010M",,,{|oModel| ZCTCommit(oModel)})
     oModel:AddFields("ZC1MASTER",,oStruZC1)

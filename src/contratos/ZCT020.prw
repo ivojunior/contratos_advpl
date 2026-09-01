@@ -126,7 +126,7 @@ Static Function ProcessaUmContrato(cContrato,dDataProc,cCompet,lGerar,aZC3)
 
     If !lGerar
         ZC1->(RestArea(aArea))
-        Return {cContrato,.T.,"Simulacao - valor a faturar: "+AllTrim(Transform(nValorAtu,"@E 999,999,999.99"))}
+        Return {cContrato,.T.,"Simulacao - valor a faturar: "+AllTrim(Transform(nValorAtu,"@E 9,999,999.99"))}
     EndIf
 
     // ------ gera o pedido de compra ------

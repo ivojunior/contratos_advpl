@@ -12,6 +12,13 @@ ela) através do **Configurador (SIGACFG) > Base de Dados > Dicionário
 de Dados**. As tabelas abaixo trazem todos os atributos necessários
 para o cadastro.
 
+**Atenção — em todo campo criado, além das colunas da tabela abaixo, marque:**
+- **Usado = Sim**
+- **Browse = Sim**
+- **Nível = 1**
+
+Se algum desses ficar com o valor padrão (geralmente "Não" para Usado/Browse), o campo é tratado como desativado e o `FWFormStruct` usado pelas rotinas MVC (`ZCT010`, `ZCT030`) o ignora ao montar a tela — o sintoma é uma tela de "Incluir" completamente vazia, mesmo com o campo existindo no SX3.
+
 ## Tabela ZC1 — Contratos de Fornecedores (cabeçalho)
 
 **SX2**: Modo = Exclusivo por filial
@@ -25,8 +32,8 @@ para o cadastro.
 | ZC1_LOJA | C | 2 | - | Loja | Loja do Fornecedor | @! | - | Sim |
 | ZC1_DTINI | D | 8 | - | Dt.Inicio | Data de início da vigência | - | - | Sim |
 | ZC1_DTFIM | D | 8 | - | Dt.Fim | Data de término da vigência | - | - | Sim |
-| ZC1_VALOR | N | 17 | 2 | Vl.Mensal | Valor da mensalidade vigente | @E 999,999,999.99 | - | Sim |
-| ZC1_VALORI | N | 17 | 2 | Vl.Original | Valor mensal original do contrato | @E 999,999,999.99 | - | Não |
+| ZC1_VALOR | N | 10 | 2 | Vl.Mensal | Valor da mensalidade vigente | @E 9,999,999.99 | - | Sim |
+| ZC1_VALORI | N | 10 | 2 | Vl.Original | Valor mensal original do contrato | @E 9,999,999.99 | - | Não |
 | ZC1_CONDPG | C | 3 | - | Cond.Pagto | Condição de pagamento | @! | SE4 | Sim |
 | ZC1_INDICE | C | 6 | - | Indice | Índice de reajuste (ZC3) | @! | - | Não |
 | ZC1_PERREA | N | 3 | 0 | Period.Reaj. | Periodicidade do reajuste (meses) | 999 | - | Não |
@@ -64,7 +71,7 @@ para o cadastro.
 | ZC2_SEQ | C | 4 | - | Sequencia | Sequência da parcela gerada | 9999 | - | Sim |
 | ZC2_COMPET | C | 6 | - | Competenc. | Competência AAAAMM | 999999 | - | Sim |
 | ZC2_NUMPC | C | 6 | - | Num.Pedido | Número do Pedido de Compra (SC7) | @! | SC7 | Sim |
-| ZC2_VALOR | N | 17 | 2 | Valor | Valor gerado na parcela | @E 999,999,999.99 | - | Sim |
+| ZC2_VALOR | N | 10 | 2 | Valor | Valor gerado na parcela | @E 9,999,999.99 | - | Sim |
 | ZC2_DTGER | D | 8 | - | Dt.Geracao | Data em que o pedido foi gerado | - | - | Sim |
 | ZC2_USUARI | C | 20 | - | Usuario | Usuário/job que gerou o pedido | @! | - | Sim |
 | ZC2_STATUS | C | 1 | - | Status | P=Pedido Gerado C=Cancelado | @! | - | Sim |
@@ -100,7 +107,7 @@ Controla, por contrato e parcela, o título de Previsão (`SE2`, `E2_TIPO = "PR"
 | ZC4_PARC | C | 4 | - | Parcela | Sequência da parcela do contrato (mesmo valor de `ZC2_SEQ` quando faturada) | 9999 | - | Sim |
 | ZC4_COMPET | C | 6 | - | Competenc. | Competência estimada AAAAMM (informativo) | 999999 | - | Sim |
 | ZC4_VENCTO | D | 8 | - | Dt.Vencto | Vencimento previsto da parcela | - | - | Sim |
-| ZC4_VALOR | N | 17 | 2 | Valor | Valor previsto da parcela | @E 999,999,999.99 | - | Sim |
+| ZC4_VALOR | N | 10 | 2 | Valor | Valor previsto da parcela | @E 9,999,999.99 | - | Sim |
 | ZC4_PREFIX | C | 3 | - | Prefixo | `E2_PREFIXO` do título gerado no SE2 | @! | - | Sim |
 | ZC4_NUMTIT | C | 9 | - | Num.Titulo | `E2_NUM` do título gerado no SE2 | @! | SE2 | Sim |
 | ZC4_PARCTI | C | 2 | - | Parc.Titulo | `E2_PARCELA` do título gerado no SE2 (sempre "01") | @! | - | Sim |
