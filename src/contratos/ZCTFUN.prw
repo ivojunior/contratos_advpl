@@ -52,11 +52,22 @@ quando possivel (ajusta para o ultimo dia do mes destino quando o dia
 de origem nao existir nele, ex: 31/01 + 1 mes = 28/02 ou 29/02).
 /*/
 User Function ZCTSomaMes(dData,nMeses)
-    Local nTotMes := Year(dData)*12 + (Month(dData)-1) + nMeses
-    Local nAno    := Int(nTotMes/12)
-    Local nMes    := (nTotMes % 12) + 1
-    Local dPrimeiro := STOD(StrZero(nAno,4)+StrZero(nMes,2)+"01")
-    Local nDia    := Min(Day(dData), Day(U_ZCTUltimoDiaMes(dPrimeiro)))
+    Local nTotMes, nAno, nMes, dPrimeiro, nDia
+
+    // defesa contra campos Data vindos de BeginSql: nesta versao do
+    // DBAccess (MSSQL/TopConnect) a conversao automatica C->D so e
+    // garantida no acesso via workarea (alias->campo); em BeginSql cru o
+    // campo pode retornar como Character (fisicamente armazenado como
+    // CHAR(8) "AAAAMMDD" no banco) mesmo sem apelido (AS) na coluna.
+    If ValType(dData) == "C"
+        dData := STOD(dData)
+    EndIf
+
+    nTotMes   := Year(dData)*12 + (Month(dData)-1) + nMeses
+    nAno      := Int(nTotMes/12)
+    nMes      := (nTotMes % 12) + 1
+    dPrimeiro := STOD(StrZero(nAno,4)+StrZero(nMes,2)+"01")
+    nDia      := Min(Day(dData), Day(U_ZCTUltimoDiaMes(dPrimeiro)))
 Return dPrimeiro + nDia - 1
 
 /*/{Protheus.doc} ZCTCarregaZC3
