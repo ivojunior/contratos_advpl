@@ -161,7 +161,10 @@ User Function ZCTGeraPC(cContrato,dDtEmiss,nValor)
     aAdd(aLinha,{"C7_PRODUTO" ,ZC1->ZC1_PRODUT           ,Nil})
     aAdd(aLinha,{"C7_QUANT"   ,1                          ,Nil})
     aAdd(aLinha,{"C7_PRECO"   ,nValor                     ,Nil})
-    aAdd(aLinha,{"C7_UM"      ,ZC1->ZC1_UM                ,Nil})
+    // C7_UM propositalmente NAO informado: o MATA120 obtem a unidade
+    // diretamente do cadastro do produto (SB1->B1_UM). Informar aqui
+    // causa "type mismatch on compare" dentro do MATA120 (conversao de
+    // unidade via MSExecAuto nao trata bem UM informada manualmente).
     aAdd(aLinha,{"C7_CC"      ,ZC1->ZC1_CC                ,Nil})
     If !Empty(ZC1->ZC1_TES)
         aAdd(aLinha,{"C7_TES" ,ZC1->ZC1_TES              ,Nil})
