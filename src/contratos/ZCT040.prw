@@ -117,8 +117,12 @@ Static Function GeraPrevisoes(cContrato,aRes)
     Local nGerado   := 0
     Local nParc, cParc, dVenc, aInc
 
+    // ZC1_DTINI mantido com o nome original (sem "AS"): o BeginSql so
+    // reconhece o tipo Data de uma coluna quando o nome bate com um campo
+    // do dicionario (SX3) - um alias renomeado (ex: "AS DTINI") faz o
+    // TOPConnect devolver a coluna como Character, quebrando U_ZCTSomaMes.
     BeginSql Alias cAliasQry
-        SELECT ZC1_CONTRA AS CONTRA, ZC1_DTINI AS DTINI, ZC1_VALOR AS VALOR,
+        SELECT ZC1_CONTRA AS CONTRA, ZC1_DTINI, ZC1_VALOR AS VALOR,
                ZC1_QTDPAR AS QTDPAR, ZC1_QTDEMI AS QTDEMI
           FROM %table:ZC1% ZC1
          WHERE ZC1_FILIAL = %xFilial:ZC1%
@@ -131,7 +135,7 @@ Static Function GeraPrevisoes(cContrato,aRes)
         For nParc := (cAliasQry)->QTDEMI + 1 To (cAliasQry)->QTDPAR
             cParc := StrZero(nParc,4)
             If !TemPrevisaoOuFatura((cAliasQry)->CONTRA,cParc)
-                dVenc := U_ZCTSomaMes((cAliasQry)->DTINI, nParc-1)
+                dVenc := U_ZCTSomaMes((cAliasQry)->ZC1_DTINI, nParc-1)
                 aInc  := U_ZCTIncluiPR((cAliasQry)->CONTRA,cParc,dVenc,(cAliasQry)->VALOR)
                 If aInc[1]
                     GravaZC4((cAliasQry)->CONTRA,cParc,U_ZCTCompet(dVenc),dVenc,(cAliasQry)->VALOR,aInc[2],aInc[3],aInc[4])
