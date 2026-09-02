@@ -52,7 +52,7 @@ Static Function ModelDef()
     oStruZC1:SetProperty("ZC1_STATUS",MODEL_FIELD_INIT,FwBuildFeature(STRUCT_FEATURE_INIPAD,'"1"'))
     oStruZC1:SetProperty("ZC1_QTDEMI",MODEL_FIELD_INIT,FwBuildFeature(STRUCT_FEATURE_INIPAD,'0'))
 
-    oModel := MPFormModel():New("ZCT010M",,,{|oModel| ZCTCommit(oModel)})
+    oModel := MPFormModel():New("ZCT010M",,{|oModel| ZCTCommit(oModel)})
     oModel:AddFields("ZC1MASTER",,oStruZC1)
     oModel:SetPrimaryKey({"ZC1_FILIAL","ZC1_CONTRA"})
     oModel:SetDescription("Contratos de Fornecedores")
@@ -74,8 +74,15 @@ Static Function ViewDef()
 Return oView
 
 /*/{Protheus.doc} ZCTCommit
-Validacao final antes de gravar o contrato: garante consistencia das
-datas de vigencia e recalcula a quantidade de parcelas/faltantes.
+Pos-validacao do modelo (3o parametro de MPFormModel():New — dispara ao
+confirmar a tela, antes da persistencia automatica do MVC): garante
+consistencia das datas de vigencia, valor da mensalidade e recalcula a
+quantidade de parcelas/faltantes via LoadValue.
+
+IMPORTANTE: nao usar o 4o parametro (bCommit) para validacao — quando
+informado, ele substitui a gravacao automatica do MVC e o proprio
+RecLock/MsUnlock passa a ser responsabilidade do bloco informado (ver
+README). Retornar .F. aqui aborta a gravacao normalmente.
 /*/
 Static Function ZCTCommit(oModel)
     Local oStruZC1  := oModel:GetModel("ZC1MASTER")
