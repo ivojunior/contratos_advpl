@@ -93,8 +93,11 @@ Static Function ZCTCommit(oModel)
     Local dDtIni    := oStruZC1:GetValue("ZC1_DTINI")
     Local dDtFim    := oStruZC1:GetValue("ZC1_DTFIM")
     Local nValor    := oStruZC1:GetValue("ZC1_VALOR")
+    Local cProduto  := oStruZC1:GetValue("ZC1_PRODUT")
+    Local cUM       := oStruZC1:GetValue("ZC1_UM")
     Local nQtdPar   := 0
     Local nQtdEmi   := oStruZC1:GetValue("ZC1_QTDEMI")
+    Local aAreaSB1
 
     If Empty(dDtIni) .Or. Empty(dDtFim)
         Help(,,"ZCT010",,"Informe as datas de inicio e fim da vigencia do contrato.",1,0)
@@ -110,6 +113,35 @@ Static Function ZCTCommit(oModel)
         Help(,,"ZCT010",,"Informe o valor da mensalidade do contrato.",1,0)
         Return .F.
     EndIf
+
+    // ------ valida produto/unidade de medida (usados na geracao do pedido) ------
+    // A unidade informada precisa ser exatamente a mesma cadastrada no produto
+    // (B1_UM), pois o MSExecAuto/MATA120 nao faz conversao de unidade quando
+    // acionado via rotina automatica: uma UM divergente nao gera erro amigavel
+    // aqui, e sim um "type mismatch on compare" dentro do MATA120 no momento da
+    // geracao do pedido (ZCT020) - por isso a checagem é feita aqui, no cadastro.
+    If Empty(cProduto)
+        Help(,,"ZCT010",,"Informe o produto/servico utilizado na geracao do pedido de compra.",1,0)
+        Return .F.
+    EndIf
+
+    aAreaSB1 := SB1->(GetArea())
+    SB1->(DbSetOrder(1)) //B1_FILIAL+B1_COD
+    If !SB1->(DbSeek(xFilial("SB1")+cProduto))
+        SB1->(RestArea(aAreaSB1))
+        Help(,,"ZCT010",,"Produto "+AllTrim(cProduto)+" nao cadastrado (SB1).",1,0)
+        Return .F.
+    EndIf
+
+    If Empty(cUM)
+        oStruZC1:LoadValue("ZC1_UM",SB1->B1_UM)
+    ElseIf AllTrim(cUM) <> AllTrim(SB1->B1_UM)
+        SB1->(RestArea(aAreaSB1))
+        Help(,,"ZCT010",,"A unidade de medida informada ("+AllTrim(cUM)+") nao confere com a "+;
+                          "unidade cadastrada para o produto "+AllTrim(cProduto)+" ("+AllTrim(SB1->B1_UM)+").",1,0)
+        Return .F.
+    EndIf
+    SB1->(RestArea(aAreaSB1))
 
     nQtdPar := U_ZCTCalcParc(dDtIni,dDtFim)
 
