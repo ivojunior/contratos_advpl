@@ -25,7 +25,7 @@ User Function ZCT040()
     Local cContrato := ""
     Local aRes
 
-    aAdd(aParams,{1,"Contrato (vazio = todos os ativos)","","","","",9,.F.})
+    aAdd(aParams,{1,"Contrato (vazio = todos os ativos)","","","","","",9,.F.})
 
     If !ParamBox(aParams,"Previsao Financeira de Contratos",aRetorno)
         Return

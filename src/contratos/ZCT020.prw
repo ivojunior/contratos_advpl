@@ -15,9 +15,9 @@ User Function ZCT020()
     Local aRetorno  := {}
     Local dDataProc := Date()
 
-    aAdd(aParams,{1,"Mes"     ,Month(Date()),"","","",40,.F.})
-    aAdd(aParams,{1,"Ano"     ,Year(Date()) ,"","","",40,.F.})
-    aAdd(aParams,{2,"Confirma a geracao dos pedidos?","Nao",{"Sim","Nao"},50,".F.",40,.T.})
+    aAdd(aParams,{1,"Mes"     ,Month(Date()),"","","","",40,.F.})
+    aAdd(aParams,{1,"Ano"     ,Year(Date()) ,"","","","",40,.F.})
+    aAdd(aParams,{2,"Confirma a geracao dos pedidos?",2,{"Sim","Nao"},50,".F.",.T.})
 
     If !ParamBox(aParams,"Geracao Mensal de Pedidos - Contratos de Fornecedores",aRetorno)
         Return
@@ -25,7 +25,7 @@ User Function ZCT020()
 
     dDataProc := STOD(StrZero(aRetorno[2],4)+StrZero(aRetorno[1],2)+"01")
 
-    ProcessaContratos(dDataProc, aRetorno[3] == "Sim", .T.)
+    ProcessaContratos(dDataProc, aRetorno[3] == 1, .T.)
 Return
 
 /*/{Protheus.doc} ZCT020JOB
