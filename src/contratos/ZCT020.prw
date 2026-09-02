@@ -25,7 +25,7 @@ User Function ZCT020()
 
     dDataProc := STOD(StrZero(aRetorno[2],4)+StrZero(aRetorno[1],2)+"01")
 
-    ProcessaContratos(dDataProc, aRetorno[3] == 1, .T.)
+    ProcessaContratos(dDataProc, aRetorno[3] == "Sim", .T.)
 Return
 
 /*/{Protheus.doc} ZCT020JOB
