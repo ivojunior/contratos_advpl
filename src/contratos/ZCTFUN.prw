@@ -154,7 +154,13 @@ User Function ZCTGeraPC(cContrato,dDtEmiss,nValor)
     aAdd(aCabec,{"C7_LOJA"    ,ZC1->ZC1_LOJA             ,Nil})
     aAdd(aCabec,{"C7_COND"    ,ZC1->ZC1_CONDPG           ,Nil})
     aAdd(aCabec,{"C7_EMISSAO" ,dDtEmiss                  ,Nil})
-    aAdd(aCabec,{"C7_COMPRA"  ,ZC1->ZC1_COMPRA           ,Nil})
+    // C7_COMPRA so e informado quando preenchido no contrato: em branco,
+    // o MATA120 compara o comprador contra um valor padrao internamente e
+    // isso gera "type mismatch on compare" quando nao ha comprador algum
+    // (nem informado aqui, nem default de usuario) para comparar.
+    If !Empty(ZC1->ZC1_COMPRA)
+        aAdd(aCabec,{"C7_COMPRA"  ,ZC1->ZC1_COMPRA           ,Nil})
+    EndIf
     aAdd(aCabec,{"C7_OBS"     ,"Pedido gerado automaticamente - Contrato "+;
                                 cContrato+" - Compet. "+U_ZCTCompet(dDtEmiss),Nil})
 
