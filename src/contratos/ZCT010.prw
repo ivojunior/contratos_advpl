@@ -40,6 +40,10 @@ Static Function MenuDef()
     ADD OPTION aRotina TITLE "Incluir"    ACTION "VIEWDEF.ZCT010" OPERATION 3 ACCESS 0
     ADD OPTION aRotina TITLE "Alterar"    ACTION "VIEWDEF.ZCT010" OPERATION 4 ACCESS 0
     ADD OPTION aRotina TITLE "Excluir"    ACTION "VIEWDEF.ZCT010" OPERATION 5 ACCESS 0
+
+    // acoes extras (fora do CRUD padrao) aparecem agrupadas em "Outras Acoes"
+    ADD OPTION aRotina TITLE "Gerar Pedidos Mensais"      ACTION "U_ZCT020()" OPERATION 8 ACCESS 0
+    ADD OPTION aRotina TITLE "Previsao Financeira"        ACTION "U_ZCT040()" OPERATION 8 ACCESS 0
 Return aRotina
 
 /*/{Protheus.doc} ModelDef

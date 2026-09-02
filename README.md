@@ -33,7 +33,7 @@ A solução é composta por 4 tabelas customizadas e 4 rotinas:
 
 1. **Cadastrar o contrato** (`ZCT010`): fornecedor/loja, início e fim de vigência, valor da mensalidade, condição de pagamento, índice e periodicidade de reajuste (em meses; deixe vazio se o contrato não tiver reajuste), produto/serviço, UM, centro de custo e comprador que serão usados na emissão do pedido. Ao gravar, o sistema calcula automaticamente a quantidade total de mensalidades previstas (`ZC1_QTDPAR`) e inicializa os contadores de emitidas (`ZC1_QTDEMI`) e faltantes (`ZC1_QTDFAL`).
 2. **Alimentar os índices** (`ZCT030`), quando o contrato tiver reajuste: cadastrar mês a mês o percentual do índice utilizado.
-3. **Gerar as mensalidades** (`ZCT020`, mensalmente ou via job agendado): a rotina localiza todos os contratos ativos vigentes na competência informada e ainda não processados nela, verifica se é o mês de reajuste (com base em `ZC1_PERREA` e nos percentuais cadastrados em `ZC3`, aplicando o percentual acumulado sobre o valor vigente), gera o pedido de compra (`SC7`) via `MSExecAuto`/`MATA120` e:
+3. **Gerar as mensalidades** (`ZCT020`, mensalmente ou via job agendado, ou pelo botão **"Gerar Pedidos Mensais"** em "Outras Ações" do browse de `ZCT010`): a rotina localiza todos os contratos ativos vigentes na competência informada e ainda não processados nela, verifica se é o mês de reajuste (com base em `ZC1_PERREA` e nos percentuais cadastrados em `ZC3`, aplicando o percentual acumulado sobre o valor vigente), gera o pedido de compra (`SC7`) via `MSExecAuto`/`MATA120` e:
    - incrementa `ZC1_QTDEMI` (mensalidades emitidas);
    - recalcula `ZC1_QTDFAL` (mensalidades restantes até o fim do contrato);
    - grava a competência e a data da última geração;
@@ -42,7 +42,7 @@ A solução é composta por 4 tabelas customizadas e 4 rotinas:
 
 A rotina pode ser executada em modo simulação (sem gerar pedidos, apenas exibindo o valor que seria faturado, inclusive já considerando reajuste) antes da geração efetiva.
 
-4. **Previsão financeira** (`ZCT040`, disparada pelo analista financeiro quando desejar): para cada contrato ativo, gera no Contas a Pagar (`SE2`) um título tipo **Previsão ("PR")** para cada parcela futura ainda não faturada, até o fim da vigência do contrato — permitindo visualizar o comprometimento financeiro futuro antes de existir pedido/fatura real. A mesma execução também **baixa (exclui)** as previsões que deixaram de fazer sentido:
+4. **Previsão financeira** (`ZCT040`, disparada pelo analista financeiro quando desejar, ou pelo botão **"Previsão Financeira"** em "Outras Ações" do browse de `ZCT010`): para cada contrato ativo, gera no Contas a Pagar (`SE2`) um título tipo **Previsão ("PR")** para cada parcela futura ainda não faturada, até o fim da vigência do contrato — permitindo visualizar o comprometimento financeiro futuro antes de existir pedido/fatura real. A mesma execução também **baixa (exclui)** as previsões que deixaram de fazer sentido:
    - quando a parcela correspondente já foi realmente faturada e o pedido de compra gerado por ela foi **totalmente atendido** (`SC7.C7_QUJE >= SC7.C7_QUANT`);
    - quando o contrato deixou de estar ativo (suspenso/encerrado/cancelado) antes de consumir todas as parcelas previstas.
 
