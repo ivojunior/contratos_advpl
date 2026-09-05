@@ -20,21 +20,24 @@ for atendida.
 @since   01/09/2026
 /*/
 User Function ZCT040()
-    Local aParams   := {}
-    Local aRetorno  := {}
-    Local cContrato := ""
+    Local aParams    := {}
+    Local aRetorno   := {}
+    Local cContraDe  := ""
+    Local cContraAte := ""
     Local aRes
 
-    aAdd(aParams,{1,"Contrato (vazio = todos os ativos)","","","","","",9,.F.})
+    aAdd(aParams,{1,"Contrato de:" ,Space(9)        ,"@!","","","",9,.F.})
+    aAdd(aParams,{1,"Contrato ate:",Replicate("Z",9),"@!","","","",9,.F.})
 
     If !ParamBox(aParams,"Previsao Financeira de Contratos",aRetorno)
         Return
     EndIf
 
-    cContrato := AllTrim(aRetorno[1])
+    cContraDe  := aRetorno[1]
+    cContraAte := aRetorno[2]
 
-    aRes := U_ZCTBaixaPrevisoes(cContrato)
-    GeraPrevisoes(cContrato,aRes)
+    aRes := U_ZCTBaixaPrevisoes(cContraDe,cContraAte)
+    GeraPrevisoes(cContraDe,cContraAte,aRes)
 
     MostraResultPrev(aRes)
 Return
@@ -48,10 +51,11 @@ Percorre as previsoes ativas (ZC4_STATUS="A") e:
     (ZC1_STATUS <> "1").
 Chamada tanto pela geracao mensal (ZCT020, silenciosamente, a cada
 execucao) quanto pela rotina interativa (ZCT040).
-@param cContrato Se informado, restringe a este contrato; vazio = todos
+@param cContraDe  Contrato inicial da faixa (C, 9) - filtro de selecao
+@param cContraAte Contrato final da faixa (C, 9) - filtro de selecao
 @return array {nBaixado, nCancelado, aErros[]}
 /*/
-User Function ZCTBaixaPrevisoes(cContrato)
+User Function ZCTBaixaPrevisoes(cContraDe,cContraAte)
     Local cAliasQry := GetNextAlias()
     Local nBaixado  := 0
     Local nCancel   := 0
@@ -69,7 +73,7 @@ User Function ZCTBaixaPrevisoes(cContrato)
           LEFT JOIN %table:SC7% SC7 ON SC7.C7_FILIAL = ZC4.ZC4_FILIAL AND SC7.C7_NUM = ZC2.ZC2_NUMPC AND SC7.%NotDel%
          WHERE ZC4.ZC4_FILIAL = %xFilial:ZC4%
            AND ZC4.ZC4_STATUS = 'A'
-           AND (%exp:cContrato% = '' OR ZC4.ZC4_CONTRA = %exp:cContrato%)
+           AND ZC4.ZC4_CONTRA BETWEEN %exp:cContraDe% AND %exp:cContraAte%
            AND ZC4.%NotDel%
     EndSql
 
@@ -108,11 +112,13 @@ futuras — reajustes que ainda vao ocorrer durante a vigencia nao sao
 projetados (limitacao conhecida, ver README: a previsao e recalculada
 a cada execucao, entao passa a refletir o valor reajustado assim que
 ele for aplicado pela geracao mensal).
+@param cContraDe  Contrato inicial da faixa (C, 9) - filtro de selecao
+@param cContraAte Contrato final da faixa (C, 9) - filtro de selecao
 @param aRes Array {nBaixado,nCancelado,aErros[]} retornado por
              ZCTBaixaPrevisoes(); recebe um 4o elemento (nGerado) e tem
              erros de geracao empilhados em aRes[3].
 /*/
-Static Function GeraPrevisoes(cContrato,aRes)
+Static Function GeraPrevisoes(cContraDe,cContraAte,aRes)
     Local cAliasQry := GetNextAlias()
     Local nGerado   := 0
     Local nParc, cParc, dVenc, aInc
@@ -127,7 +133,7 @@ Static Function GeraPrevisoes(cContrato,aRes)
           FROM %table:ZC1% ZC1
          WHERE ZC1_FILIAL = %xFilial:ZC1%
            AND ZC1_STATUS = '1'
-           AND (%exp:cContrato% = '' OR ZC1_CONTRA = %exp:cContrato%)
+           AND ZC1_CONTRA BETWEEN %exp:cContraDe% AND %exp:cContraAte%
            AND ZC1.%NotDel%
     EndSql
 

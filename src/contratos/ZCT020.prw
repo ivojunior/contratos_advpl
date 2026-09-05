@@ -14,9 +14,12 @@ User Function ZCT020()
     Local aParams   := {}
     Local aRetorno  := {}
     Local dDataProc := Date()
+    Local lConfirma := .F.
 
-    aAdd(aParams,{1,"Mes"     ,Month(Date()),"","","","",40,.F.})
-    aAdd(aParams,{1,"Ano"     ,Year(Date()) ,"","","","",40,.F.})
+    aAdd(aParams,{1,"Mes"          ,Month(Date())   ,"99","","","",40,.F.})
+    aAdd(aParams,{1,"Ano"          ,Year(Date())    ,"","","","",40,.F.})
+    aAdd(aParams,{1,"Contrato de:" ,Space(9)        ,"@!","","","",9,.F.})
+    aAdd(aParams,{1,"Contrato ate:",Replicate("Z",9),"@!","","","",9,.F.})
     aAdd(aParams,{2,"Confirma a geracao dos pedidos?",2,{"Sim","Nao"},50,".F.",.T.})
 
     If !ParamBox(aParams,"Geracao Mensal de Pedidos - Contratos de Fornecedores",aRetorno)
@@ -25,28 +28,43 @@ User Function ZCT020()
 
     dDataProc := STOD(StrZero(aRetorno[2],4)+StrZero(aRetorno[1],2)+"01")
 
-    ProcessaContratos(dDataProc, aRetorno[3] == "Sim", .T.)
+    // a resposta de uma pergunta tipo 2 (combo) do ParamBox pode voltar
+    // como a string do texto selecionado OU, dependendo da versao/build,
+    // como o indice numerico da opcao (aqui, aOpcoes={"Sim","Nao"} -> 1)
+    // - comparar direto contra "Sim" quando o retorno vem numerico gera
+    // "type mismatch on compare"; por isso trata os dois formatos.
+    If ValType(aRetorno[5]) == "C"
+        lConfirma := (aRetorno[5] == "Sim")
+    Else
+        lConfirma := (aRetorno[5] == 1)
+    EndIf
+
+    ProcessaContratos(dDataProc, lConfirma, .T., aRetorno[3], aRetorno[4])
 Return
 
 /*/{Protheus.doc} ZCT020JOB
 Ponto de entrada para execucao desassistida (Schedule/Agendador de
 Tarefas do Configurador), processando a competencia corrente sem
-necessidade de confirmacao manual. Cadastrar esta funcao para rodar uma
-vez por mes (ex: todo dia 1, as 06:00).
+necessidade de confirmacao manual, para TODOS os contratos (sem filtro
+de faixa). Cadastrar esta funcao para rodar uma vez por mes (ex: todo
+dia 1, as 06:00).
 /*/
 User Function ZCT020JOB()
-    ProcessaContratos(Date(), .T., .F.)
+    ProcessaContratos(Date(), .T., .F., Space(9), Replicate("Z",9))
 Return
 
 /*/{Protheus.doc} ProcessaContratos
 Rotina central de geracao. Percorre os contratos ativos vigentes na
-competencia informada, aplica reajuste quando devido, gera o pedido de
-compra e atualiza os contadores de mensalidades do contrato.
-@param dDataProc  Data base do processamento (define a competencia)
-@param lGerar     .T. efetivamente gera os pedidos; .F. apenas simula/lista
+competencia informada e dentro da faixa de contrato informada, aplica
+reajuste quando devido, gera o pedido de compra e atualiza os
+contadores de mensalidades do contrato.
+@param dDataProc   Data base do processamento (define a competencia)
+@param lGerar      .T. efetivamente gera os pedidos; .F. apenas simula/lista
 @param lInterativo .T. exibe tela de resultado ao usuario
+@param cContraDe   Contrato inicial da faixa (C, 9) - filtro de selecao
+@param cContraAte  Contrato final da faixa (C, 9) - filtro de selecao
 /*/
-Static Function ProcessaContratos(dDataProc,lGerar,lInterativo)
+Static Function ProcessaContratos(dDataProc,lGerar,lInterativo,cContraDe,cContraAte)
     Local cCompet    := U_ZCTCompet(dDataProc)
     Local dPrimeiro  := STOD(SubStr(DtoS(dDataProc),1,6)+"01")
     Local dUltimo    := U_ZCTUltimoDiaMes(dDataProc)
@@ -57,8 +75,10 @@ Static Function ProcessaContratos(dDataProc,lGerar,lInterativo)
     Local aZC3       := U_ZCTCarregaZC3()
 
     // baixa/cancela previsoes (SE2 tipo "PR") ja atendidas ou de
-    // contratos inativos antes de gerar as novas parcelas do mes
-    U_ZCTBaixaPrevisoes("")
+    // contratos inativos antes de gerar as novas parcelas do mes -
+    // sempre para TODOS os contratos, independente da faixa filtrada
+    // nesta geracao de pedidos (sao operacoes de manutencao distintas)
+    U_ZCTBaixaPrevisoes(Space(9),Replicate("Z",9))
 
     BeginSql Alias cAliasQry
         SELECT ZC1_CONTRA
@@ -68,6 +88,7 @@ Static Function ProcessaContratos(dDataProc,lGerar,lInterativo)
            AND ZC1_DTINI  <= %exp:dUltimo%
            AND ZC1_DTFIM  >= %exp:dPrimeiro%
            AND ZC1_COMPET <> %exp:cCompet%
+           AND ZC1_CONTRA BETWEEN %exp:cContraDe% AND %exp:cContraAte%
            AND ZC1.%NotDel%
          ORDER BY ZC1_CONTRA
     EndSql

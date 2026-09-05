@@ -139,11 +139,13 @@ contrato, atraves de MSExecAuto (MATA120).
 /*/
 User Function ZCTGeraPC(cContrato,dDtEmiss,nValor)
     Local aArea      := ZC1->(GetArea())
+    Local aAreaSA2
     Local aCabec     := {}
     Local aItens     := {}
     Local aLinha     := {}
     Local cNumPC     := ""
     Local cMsgErro   := ""
+    Local cContato   := ""
     Local aLog       := {}
     Local nI
     // lMsErroAuto/lAutoErrNoFile precisam ser Private: o MSExecAuto/MATA120
@@ -160,36 +162,48 @@ User Function ZCTGeraPC(cContrato,dDtEmiss,nValor)
         Return {.F.,"","Contrato "+cContrato+" nao localizado."}
     EndIf
 
+    aAreaSA2 := SA2->(GetArea())
+    SA2->(DbSetOrder(1)) //A2_FILIAL+A2_COD+A2_LOJA
+    If SA2->(DbSeek(xFilial("SA2")+ZC1->ZC1_FORNEC+ZC1->ZC1_LOJA))
+        cContato := AllTrim(SA2->A2_CONTATO)
+    EndIf
+    SA2->(RestArea(aAreaSA2))
+
     aAdd(aCabec,{"C7_FILIAL"  ,xFilial("SC7")           ,Nil})
     aAdd(aCabec,{"C7_FORNECE" ,ZC1->ZC1_FORNEC           ,Nil})
     aAdd(aCabec,{"C7_LOJA"    ,ZC1->ZC1_LOJA             ,Nil})
     aAdd(aCabec,{"C7_COND"    ,ZC1->ZC1_CONDPG           ,Nil})
     aAdd(aCabec,{"C7_EMISSAO" ,dDtEmiss                  ,Nil})
-    // C7_COMPRA so e informado quando preenchido no contrato: em branco,
-    // o MATA120 compara o comprador contra um valor padrao internamente e
-    // isso gera "type mismatch on compare" quando nao ha comprador algum
-    // (nem informado aqui, nem default de usuario) para comparar.
-    If !Empty(ZC1->ZC1_COMPRA)
-        aAdd(aCabec,{"C7_COMPRA"  ,ZC1->ZC1_COMPRA           ,Nil})
+    aAdd(aCabec,{"C7_FILENT"  ,xFilial("SC7")            ,Nil})
+    If !Empty(cContato)
+        aAdd(aCabec,{"C7_CONTATO",cContato               ,Nil})
     EndIf
+    aAdd(aCabec,{"C7_YOPER"   ,ZC1->ZC1_YOPER            ,Nil})
     aAdd(aCabec,{"C7_OBS"     ,"Pedido gerado automaticamente - Contrato "+;
                                 cContrato+" - Compet. "+U_ZCTCompet(dDtEmiss),Nil})
 
     aAdd(aLinha,{"C7_PRODUTO" ,ZC1->ZC1_PRODUT           ,Nil})
     aAdd(aLinha,{"C7_QUANT"   ,1                          ,Nil})
     aAdd(aLinha,{"C7_PRECO"   ,nValor                     ,Nil})
+    aAdd(aLinha,{"C7_TOTAL"   ,nValor                     ,Nil})
     // C7_UM propositalmente NAO informado: o MATA120 obtem a unidade
-    // diretamente do cadastro do produto (SB1->B1_UM). Informar aqui
-    // causa "type mismatch on compare" dentro do MATA120 (conversao de
-    // unidade via MSExecAuto nao trata bem UM informada manualmente).
+    // diretamente do cadastro do produto (SB1->B1_UM).
     aAdd(aLinha,{"C7_CC"      ,ZC1->ZC1_CC                ,Nil})
+    aAdd(aLinha,{"C7_ITEMCTA" ,xFilial("SC7")             ,Nil})
     If !Empty(ZC1->ZC1_TES)
         aAdd(aLinha,{"C7_TES" ,ZC1->ZC1_TES              ,Nil})
     EndIf
     aAdd(aLinha,{"C7_DATPRF"  ,dDtEmiss                   ,Nil})
     aAdd(aItens,aLinha)
 
-    MSExecAuto({|x,y,z,w| Mata120(x,y,z,w)}, aCabec, aItens, 3)
+    // O bRotina de MSExecAuto para o MATA120 precisa do 1o parametro
+    // "nFuncao" antes do cabecalho/itens - a assinatura generica usada em
+    // outros ExecAuto deste modulo (aCabec, aItens, nOpcao) NAO se aplica
+    // ao MATA120, cujo 1o parametro real e nFuncao (aqui 1). Usar a
+    // assinatura errada fazia o MATA120 receber o array aCabec no lugar
+    // de nFuncao, causando "type mismatch on compare" (erro fatal, que
+    // nem Begin Sequence/Recover Using conseguia capturar).
+    MSExecAuto({|nFunc,x,y,z,w| Mata120(nFunc,x,y,z,w)}, 1, aCabec, aItens, 3, .T.)
 
     If lMsErroAuto
         aLog := GetAutoGRLog()
@@ -215,13 +229,24 @@ de existir a fatura real. Usado pela rotina de Previsao Financeira
 @param dVenc     Data de vencimento previsto da parcela
 @param nValor    Valor previsto da parcela (valor vigente do contrato)
 @return array {lOk, cPrefixo, cNumTit, cParcTit, cMsgErro}
+
+IMPORTANTE: E2_NUM e sempre o numero do contrato (9 posicoes, ver README)
+e nao varia por parcela - por isso e2_PARCELA (aqui, cParcTit) PRECISA
+variar a cada parcela do MESMO contrato, senao duas previsoes do mesmo
+contrato tentam usar a chave identica da SE2
+(E2_FILIAL+E2_PREFIXO+E2_NUM+E2_PARCELA+E2_TIPO+E2_FORNECE+E2_LOJA) e o
+FINA050 rejeita a segunda com "numero do titulo ja existe para este
+fornecedor". Usa os 2 ultimos digitos de cParc (E2_PARCELA nativo tem
+so 2 posicoes) - LIMITACAO CONHECIDA: contratos com mais de 99 parcelas
+AINDA NAO FATURADAS simultaneamente (implausivel na pratica, ja que
+ZCT020 fatura mensalmente) colidiriam entre si.
 /*/
 User Function ZCTIncluiPR(cContrato,cParc,dVenc,nValor)
     Local aArea    := ZC1->(GetArea())
     Local aCabec   := {}
     Local cPrefixo := "PR"
     Local cNumTit  := Left(cContrato,9)
-    Local cParcTit := "01"
+    Local cParcTit := Right(cParc,2)
     Local cMsgErro := ""
     Local aLog     := {}
     Local nI
@@ -248,7 +273,8 @@ User Function ZCTIncluiPR(cContrato,cParc,dVenc,nValor)
     aAdd(aCabec,{"E2_VENCREA",dVenc            ,Nil})
     aAdd(aCabec,{"E2_VALOR"  ,nValor           ,Nil})
     aAdd(aCabec,{"E2_MOEDA"  ,1                ,Nil})
-    aAdd(aCabec,{"E2_HIST"   ,"Previsao ctr. "+cContrato+" parc. "+cParc,Nil})
+    aAdd(aCabec,{"E2_HIST"   ,"Previsao ctr. "+cContrato+" parc. "+cParc+"/"+StrZero(ZC1->ZC1_QTDPAR,Len(cParc)),Nil})
+    aAdd(aCabec,{"E2_YOPER"  ,"087"            ,Nil})
 
     MSExecAuto({|x,y| FINA050(x,y)}, aCabec, 3)
 

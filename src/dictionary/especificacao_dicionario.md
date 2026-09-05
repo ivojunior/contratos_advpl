@@ -26,10 +26,11 @@ Se algum desses ficar com o valor padrão (geralmente "Não" para Usado/Browse),
 | Campo | Tipo | Tam. | Dec. | Título | Descrição | Picture | F3 | Obrigatório |
 |---|---|---|---|---|---|---|---|---|
 | ZC1_FILIAL | C | 8 | - | Filial | Filial | @! | - | Não* |
-| ZC1_CONTRA | C | 9 | - | Contrato | Número do Contrato | @! | - | Sim |
+| ZC1_CONTRA | C | 9 | - | Contrato | Número do Contrato | @! | - | Sim***** |
 | ZC1_DESCR | C | 40 | - | Descricao | Descrição/objeto do contrato | @! | - | Sim |
 | ZC1_FORNEC | C | 6 | - | Fornecedor | Código do Fornecedor | @! | SA2 | Sim |
 | ZC1_LOJA | C | 2 | - | Loja | Loja do Fornecedor | @! | - | Sim |
+| ZC1_NOMFOR | C | 40 | - | Nome Fornec. | Nome do fornecedor (campo virtual, exibido no browse) | @! | - | Não****** |
 | ZC1_DTINI | D | 8 | - | Dt.Inicio | Data de início da vigência | - | - | Sim |
 | ZC1_DTFIM | D | 8 | - | Dt.Fim | Data de término da vigência | - | - | Sim |
 | ZC1_VALOR | N | 10 | 2 | Vl.Mensal | Valor da mensalidade vigente | @E 9,999,999.99 | - | Sim |
@@ -39,10 +40,10 @@ Se algum desses ficar com o valor padrão (geralmente "Não" para Usado/Browse),
 | ZC1_PERREA | N | 3 | 0 | Period.Reaj. | Periodicidade do reajuste (meses) | 999 | - | Não |
 | ZC1_DTULTR | D | 8 | - | Dt.Ult.Reaj. | Data do último reajuste aplicado | - | - | Não |
 | ZC1_PRODUT | C | 15 | - | Produto | Produto/serviço usado no pedido | @! | SB1 | Sim |
-| ZC1_UM | C | 2 | - | UM | Unidade de medida | @! | - | Sim |
+| ZC1_UM | C | 2 | - | UM | Unidade de medida | @! | - | Não (calculado) |
 | ZC1_CC | C | 9 | - | Cent.Custo | Centro de custo | @! | CTT | Sim |
-| ZC1_COMPRA | C | 6 | - | Comprador | Código do comprador | @! | SY1 | Não |
 | ZC1_TES | C | 3 | - | TES | Tipo de entrada/saída | @! | SF4 | Não |
+| ZC1_YOPER | C | 3 | - | Tp.Operação | Tipo de operação usado no pedido de compra (campo customizado `C7_YOPER` do SC7) | @! | - | Não |
 | ZC1_NATUR | C | 9 | - | Natureza | Natureza financeira usada na previsão (SED) | @! | SED | Sim**** |
 | ZC1_QTDPAR | N | 3 | 0 | Qtd.Parcelas | Total de mensalidades previstas | 999 | - | Não (calculado) |
 | ZC1_QTDEMI | N | 3 | 0 | Qtd.Emitidas | Mensalidades/pedidos já emitidos | 999 | - | Não (calculado) |
@@ -55,6 +56,33 @@ Se algum desses ficar com o valor padrão (geralmente "Não" para Usado/Browse),
 \* preenchido automaticamente pelo framework (`xFilial`).
 \*\* campo Memo: tamanho 10 corresponde ao ponteiro de bloco no DBF; ajustar conforme padrão do RDBMS em uso.
 \*\*\*\* obrigatório apenas se a rotina de Previsão Financeira (`ZCT040`) for utilizada — é a natureza gravada no título de Previsão (`E2_NATUREZ`) no Contas a Pagar.
+\*\*\*\*\*\* campo **virtual** (não existe fisicamente na tabela — não conta para o tamanho físico do registro nem é gravado): no Configurador, ao criar o campo marque **Contexto = Virtual**, informe a **tabela relacionada `SA2`** e o **campo de origem `A2_NOME`**, tendo `ZC1_FORNEC` como campo-chave do relacionamento (o Configurador resolve `A2_NOME` a partir do fornecedor gravado em `ZC1_FORNEC`). Além de **Usado = Sim**, **Browse = Sim** e **Nível = 1** (regra geral já citada acima), campos virtuais também exigem marcar essa opção de relacionamento na aba correspondente da tela de campos do Configurador — sem isso, o campo aparece em branco no browse. `ZCT010()` não define a ordem das colunas explicitamente, então o campo aparece na posição em que foi cadastrado no SX3 (logo após `ZC1_LOJA`, conforme a ordem acima) — para reordenar as colunas do browse seria necessário usar a API correta de `FWMBrowse` para customização de colunas, não coberta neste projeto.
+
+### Campos somente leitura na tela (ZCT010)
+
+Além do preenchimento automático de `ZC1_FILIAL` pelo framework, os seguintes campos são calculados/atualizados pelas próprias rotinas do módulo (`ZCTCommit` na inclusão e `ZCT020` na geração mensal) e **não devem ser digitados pelo usuário**. Isso é reforçado no código via `MODEL_FIELD_WHEN` (bloqueia edição em tela), não apenas por convenção:
+
+- `ZC1_FILIAL` — framework (`xFilial`).
+- `ZC1_CONTRA` — autoincremento via `GetSxeNum`/`ConfirmSX8`. `U_ZCTNumContrato()` **reserva** o número (`GetSxeNum`, sem confirmar) em `MODEL_FIELD_INIT`, ao abrir a tela de Incluir — precisa preencher o campo desde já para satisfazer a obrigatoriedade do SX3 (o `FWFormView` valida campos obrigatórios antes de chamar `ZCTCommit`). A confirmação definitiva (`ConfirmSX8`) só ocorre em `ZCTCommit`, depois de todas as validações passarem e a inclusão realmente for salva. Enquanto a reserva não é confirmada, o próprio `GetSxeNum` devolve o mesmo número pendente em chamadas seguintes — por isso desistir da inclusão (fechar sem confirmar) e clicar em "Incluir" de novo não pula número.
+- `ZC1_UM` — desnecessário digitar: `ZCTCommit` sempre atribui o valor de `SB1->B1_UM` (unidade cadastrada no produto informado em `ZC1_PRODUT`).
+- `ZC1_QTDPAR` — calculado em `ZCTCommit` a partir de `ZC1_DTINI`/`ZC1_DTFIM`.
+- `ZC1_QTDEMI` — incrementado pelo `ZCT020` a cada pedido gerado.
+- `ZC1_QTDFAL` — calculado (`ZCTCommit` na inclusão; `ZCT020` a cada geração).
+- `ZC1_COMPET` — atualizado pelo `ZCT020` com a competência do último pedido gerado.
+- `ZC1_DTULGE` — atualizado pelo `ZCT020` com a data do último pedido gerado.
+- `ZC1_DTULTR` — atualizado pelo `ZCT020` somente quando um reajuste é efetivamente aplicado.
+
+`ZC1_VALOR` e `ZC1_STATUS` também são alterados pelo `ZCT020` (valor reajustado e encerramento automático do contrato), mas continuam **editáveis** na tela: `ZC1_VALOR` é digitado na criação do contrato e `ZC1_STATUS` precisa poder ser alterado manualmente (ex.: suspender/cancelar um contrato).
+
+### Campos somente leitura na tela (ZCT030)
+
+- `ZC3_FILIAL` — framework (`xFilial`). Os demais campos (`ZC3_INDICE`, `ZC3_DESCR`, `ZC3_COMPET`, `ZC3_PERC`) são digitados manualmente pelo analista todo mês e permanecem editáveis.
+
+### Tabelas ZC2 e ZC4 — sem tela de cadastro
+
+`ZC2` (histórico de pedidos gerados) e `ZC4` (previsões financeiras geradas) não possuem rotina MVC própria: todos os seus campos são gravados exclusivamente por código (`ZCT020` grava `ZC2`; `ZCT040`/`ZCTFUN.prw` gravam e atualizam `ZC4`). Na prática, portanto, a tabela inteira já é "somente leitura" para o usuário — não há tela onde ele possa incluir/alterar esses registros diretamente.
+
+\*\*\*\*\* preenchido automaticamente (autoincremento) pelo código do cadastro (`ZCT010`, função `U_ZCTNumContrato`), via sequencial de controle `SXE`/`GetSxeNum` — não é digitado pelo usuário nem exige configuração extra no Configurador; o campo aparece na tela apenas como somente-leitura.
 
 `ZC1_CONTRA` tem tamanho 9 (e não 10) propositalmente: a rotina de Previsão Financeira usa o número do contrato como `E2_NUM` no Contas a Pagar (SE2), campo nativo limitado a 9 posições — manter os dois em sincronia evita truncamento/colisão de chave. Se as tabelas já tiverem sido criadas com `ZC1_CONTRA` de 10 posições, ajuste o tamanho do campo pelo Configurador antes de usar `ZCT040`.
 
@@ -110,12 +138,14 @@ Controla, por contrato e parcela, o título de Previsão (`SE2`, `E2_TIPO = "PR"
 | ZC4_VALOR | N | 10 | 2 | Valor | Valor previsto da parcela | @E 9,999,999.99 | - | Sim |
 | ZC4_PREFIX | C | 3 | - | Prefixo | `E2_PREFIXO` do título gerado no SE2 | @! | - | Sim |
 | ZC4_NUMTIT | C | 9 | - | Num.Titulo | `E2_NUM` do título gerado no SE2 | @! | SE2 | Sim |
-| ZC4_PARCTI | C | 2 | - | Parc.Titulo | `E2_PARCELA` do título gerado no SE2 (sempre "01") | @! | - | Sim |
+| ZC4_PARCTI | C | 2 | - | Parc.Titulo | `E2_PARCELA` do título gerado no SE2 (2 últimos dígitos de `ZC4_PARC` — ver nota abaixo) | @! | - | Sim |
 | ZC4_STATUS | C | 1 | - | Status | A=Ativo(previsto) B=Baixado(faturado) C=Cancelado | @! | - | Sim |
 | ZC4_DTGER | D | 8 | - | Dt.Geracao | Data de geração da previsão | - | - | Sim |
 | ZC4_DTBAIXA | D | 8 | - | Dt.Baixa | Data em que a previsão foi baixada/cancelada | - | - | Não |
 
 **Índice (SIX) 1**: `ZC4_FILIAL+ZC4_CONTRA+ZC4_PARC` (único) — descrição "Filial+Contrato+Parcela"
+
+**`ZC4_PARCTI`/`E2_PARCELA` precisam variar por parcela do contrato**: como `E2_NUM` é sempre o número do contrato (fixo, não varia por parcela — ver nota sobre `ZC1_CONTRA` abaixo), a chave da `SE2` (`E2_FILIAL+E2_PREFIXO+E2_NUM+E2_PARCELA+E2_TIPO+E2_FORNECE+E2_LOJA`) só fica única entre as várias previsões do mesmo contrato se `E2_PARCELA` for diferente em cada uma. `ZCTIncluiPR()` (`ZCTFUN.prw`) usa os 2 últimos dígitos da parcela do contrato (`Right(cParc,2)`) para isso — usar sempre `"01"`, como versões anteriores desta especificação chegaram a documentar, faz o `FINA050` rejeitar a segunda parcela em diante com `"número do título já existe para este fornecedor"`. **Limitação conhecida**: contratos com mais de 99 parcelas ainda não faturadas simultaneamente colidiriam entre si — improvável na prática, já que `ZCT020` fatura mensalmente.
 
 ## Passo a passo no Configurador
 

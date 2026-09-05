@@ -34,6 +34,10 @@ Static Function ModelDef()
     Local oStruZC3 := FWFormStruct(1,ZCT030_TABLE)
     Local oModel
 
+    // ZC3_FILIAL e preenchida automaticamente pelo framework (xFilial),
+    // nunca pelo usuario - somente leitura na tela.
+    oStruZC3:SetProperty("ZC3_FILIAL",MODEL_FIELD_WHEN,FwBuildFeature(STRUCT_FEATURE_WHEN,'.F.'))
+
     oModel := MPFormModel():New("ZCT030M")
     oModel:AddFields("ZC3MASTER",,oStruZC3)
     oModel:SetPrimaryKey({"ZC3_FILIAL","ZC3_INDICE","ZC3_COMPET"})
