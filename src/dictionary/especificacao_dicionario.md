@@ -34,7 +34,7 @@ Se algum desses ficar com o valor padrão (geralmente "Não" para Usado/Browse),
 | ZC1_DTINI | D | 8 | - | Dt.Inicio | Data de início da vigência | - | - | Sim |
 | ZC1_DTFIM | D | 8 | - | Dt.Fim | Data de término da vigência | - | - | Sim |
 | ZC1_VALOR | N | 10 | 2 | Vl.Mensal | Valor da mensalidade vigente | @E 9,999,999.99 | - | Sim |
-| ZC1_VALORI | N | 10 | 2 | Vl.Original | Valor mensal original do contrato | @E 9,999,999.99 | - | Não |
+| ZC1_VALORI | N | 10 | 2 | Vl.Original | Valor mensal original do contrato | @E 9,999,999.99 | - | Não (calculado) |
 | ZC1_CONDPG | C | 3 | - | Cond.Pagto | Condição de pagamento | @! | SE4 | Sim |
 | ZC1_INDICE | C | 6 | - | Indice | Índice de reajuste (ZC3) | @! | - | Não |
 | ZC1_PERREA | N | 3 | 0 | Period.Reaj. | Periodicidade do reajuste (meses) | 999 | - | Não |
@@ -65,6 +65,7 @@ Além do preenchimento automático de `ZC1_FILIAL` pelo framework, os seguintes 
 - `ZC1_FILIAL` — framework (`xFilial`).
 - `ZC1_CONTRA` — autoincremento via `GetSxeNum`/`ConfirmSX8`. `U_ZCTNumContrato()` **reserva** o número (`GetSxeNum`, sem confirmar) em `MODEL_FIELD_INIT`, ao abrir a tela de Incluir — precisa preencher o campo desde já para satisfazer a obrigatoriedade do SX3 (o `FWFormView` valida campos obrigatórios antes de chamar `ZCTCommit`). A confirmação definitiva (`ConfirmSX8`) só ocorre em `ZCTCommit`, depois de todas as validações passarem e a inclusão realmente for salva. Enquanto a reserva não é confirmada, o próprio `GetSxeNum` devolve o mesmo número pendente em chamadas seguintes — por isso desistir da inclusão (fechar sem confirmar) e clicar em "Incluir" de novo não pula número.
 - `ZC1_UM` — desnecessário digitar: `ZCTCommit` sempre atribui o valor de `SB1->B1_UM` (unidade cadastrada no produto informado em `ZC1_PRODUT`).
+- `ZC1_VALORI` — preenchido automaticamente por `ZCTCommit` com o valor de `ZC1_VALOR` **apenas quando está vazio** (na prática, isso acontece uma única vez, na inclusão) — depois disso permanece congelado com o valor original do contrato, mesmo após reajustes aplicados pelo `ZCT020` (que atualiza `ZC1_VALOR`/`ZC1_DTULTR`, nunca `ZC1_VALORI`).
 - `ZC1_QTDPAR` — calculado em `ZCTCommit` a partir de `ZC1_DTINI`/`ZC1_DTFIM`.
 - `ZC1_QTDEMI` — incrementado pelo `ZCT020` a cada pedido gerado.
 - `ZC1_QTDFAL` — calculado (`ZCTCommit` na inclusão; `ZCT020` a cada geração).

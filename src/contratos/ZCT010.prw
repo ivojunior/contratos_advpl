@@ -120,6 +120,11 @@ Static Function ModelDef()
     // ZC1_UM e desnecessario digitar: sempre reflete a unidade cadastrada
     // no produto (SB1->B1_UM), atribuida em ZCTCommit.
     oStruZC1:SetProperty("ZC1_UM"     ,MODEL_FIELD_WHEN,FwBuildFeature(STRUCT_FEATURE_WHEN,'.F.'))
+    // ZC1_VALORI e preenchido automaticamente (copia de ZC1_VALOR) na
+    // inclusao, quando vazio, e nunca mais alterado pelo ZCT020 - digitar/
+    // apagar manualmente pode fazer ZCTCommit regravar com o valor ATUAL
+    // (ja reajustado) na proxima alteracao, perdendo o valor original.
+    oStruZC1:SetProperty("ZC1_VALORI" ,MODEL_FIELD_WHEN,FwBuildFeature(STRUCT_FEATURE_WHEN,'.F.'))
     oStruZC1:SetProperty("ZC1_QTDPAR" ,MODEL_FIELD_WHEN,FwBuildFeature(STRUCT_FEATURE_WHEN,'.F.'))
     oStruZC1:SetProperty("ZC1_QTDEMI" ,MODEL_FIELD_WHEN,FwBuildFeature(STRUCT_FEATURE_WHEN,'.F.'))
     oStruZC1:SetProperty("ZC1_QTDFAL" ,MODEL_FIELD_WHEN,FwBuildFeature(STRUCT_FEATURE_WHEN,'.F.'))
