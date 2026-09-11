@@ -105,7 +105,11 @@ Além do preenchimento automático de `ZC1_FILIAL` pelo framework, os seguintes 
 | ZC2_USUARI | C | 20 | - | Usuario | Usuário/job que gerou o pedido | @! | - | Sim |
 | ZC2_STATUS | C | 1 | - | Status | P=Pedido Gerado C=Cancelado | @! | - | Sim |
 
-\*\*\* o F3 de `ZC1` precisa ser configurado no Configurador (aba "Índice/Consulta Padrão") junto com a criação da tabela; não existe consulta pronta para tabelas customizadas.
+\*\*\* o F3 de `ZC1` precisa ser configurado no Configurador (aba "Índice/Consulta Padrão") junto com a criação da tabela; não existe consulta pronta para tabelas customizadas. Essa mesma Consulta Padrão (código `ZC1`) é reutilizada como F3/lupa dos campos "Contrato de:"/"Contrato até:" nas telas de `ZCT020`, `ZCT025` e `ZCT040` (informada no 6º elemento do array do `ParamBox`, `cF3`) — sem ela cadastrada, o F3 desses campos não abre nenhuma pesquisa. Ao cadastrá-la (Configurador > Ambiente > Cadastros > Consulta Padrão), configure:
+  - **Tabela**: `ZC1`
+  - **Campo de retorno/chave de busca**: `ZC1_CONTRA`
+  - **Campos exibidos na grade**: sugestão `ZC1_CONTRA`, `ZC1_DESCR`, `ZC1_FORNEC`, `ZC1_STATUS` (ou outros que ajudem a localizar o contrato pelo nome/descrição, já que o código sozinho não é mnemônico)
+  - **Ordem de exibição/pesquisa**: `ZC1_FILIAL+ZC1_CONTRA` (mesma do índice único SIX 1)
 
 **Índice (SIX) 1**: `ZC2_FILIAL+ZC2_CONTRA+ZC2_SEQ` (único) — descrição "Filial+Contrato+Sequencia"
 

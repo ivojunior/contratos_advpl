@@ -37,7 +37,10 @@ User Function ZCT025()
 
     aAdd(aParams,{1,"Mes"     ,Month(Date()),"99","","","",40,.F.})
     aAdd(aParams,{1,"Ano"     ,Year(Date()) ,"","","","",40,.F.})
-    aAdd(aParams,{1,"Contrato (vazio = todos)","","","","","",9,.F.})
+    // "ZC1" no 6o elemento (cF3) habilita a lupa/F3 de pesquisa do
+    // contrato no ParamBox - ver nota em ZCT020.prw e especificacao_dicionario.md
+    // sobre a Consulta Padrao (SXB) que precisa ser cadastrada no Configurador.
+    aAdd(aParams,{1,"Contrato (vazio = todos)","","","","ZC1","",9,.F.})
     aAdd(aParams,{2,"Confirma o desfazimento dos pedidos?",2,{"Sim","Nao"},50,".F.",.T.})
 
     If !ParamBox(aParams,"Desfazer Geracao Mensal de Pedidos - Contratos de Fornecedores",aRetorno)

@@ -26,8 +26,11 @@ User Function ZCT040()
     Local cContraAte := ""
     Local aRes
 
-    aAdd(aParams,{1,"Contrato de:" ,Space(9)        ,"@!","","","",9,.F.})
-    aAdd(aParams,{1,"Contrato ate:",Replicate("Z",9),"@!","","","",9,.F.})
+    // "ZC1" no 6o elemento (cF3) habilita a lupa/F3 de pesquisa do
+    // contrato no ParamBox - ver nota em ZCT020.prw e especificacao_dicionario.md
+    // sobre a Consulta Padrao (SXB) que precisa ser cadastrada no Configurador.
+    aAdd(aParams,{1,"Contrato de:" ,Space(9)        ,"@!","","ZC1","",9,.F.})
+    aAdd(aParams,{1,"Contrato ate:",Replicate("Z",9),"@!","","ZC1","",9,.F.})
 
     If !ParamBox(aParams,"Previsao Financeira de Contratos",aRetorno)
         Return

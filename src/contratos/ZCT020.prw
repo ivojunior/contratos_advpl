@@ -18,8 +18,13 @@ User Function ZCT020()
 
     aAdd(aParams,{1,"Mes"          ,Month(Date())   ,"99","","","",40,.F.})
     aAdd(aParams,{1,"Ano"          ,Year(Date())    ,"","","","",40,.F.})
-    aAdd(aParams,{1,"Contrato de:" ,Space(9)        ,"@!","","","",9,.F.})
-    aAdd(aParams,{1,"Contrato ate:",Replicate("Z",9),"@!","","","",9,.F.})
+    // "ZC1" no 6o elemento (cF3) habilita a lupa/F3 de pesquisa do
+    // contrato no ParamBox, usando a Consulta Padrao (SXB) cadastrada
+    // no Configurador (ver especificacao_dicionario.md) - sem essa
+    // consulta cadastrada o F3 simplesmente nao abre nada (tabela
+    // customizada nao tem pesquisa padrao pronta, ao contrario de SA2/SB1).
+    aAdd(aParams,{1,"Contrato de:" ,Space(9)        ,"@!","","ZC1","",9,.F.})
+    aAdd(aParams,{1,"Contrato ate:",Replicate("Z",9),"@!","","ZC1","",9,.F.})
     aAdd(aParams,{2,"Confirma a geracao dos pedidos?",2,{"Sim","Nao"},50,".F.",.T.})
 
     If !ParamBox(aParams,"Geracao Mensal de Pedidos - Contratos de Fornecedores",aRetorno)
