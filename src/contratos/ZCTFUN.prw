@@ -169,32 +169,31 @@ User Function ZCTGeraPC(cContrato,dDtEmiss,nValor)
     EndIf
     SA2->(RestArea(aAreaSA2))
 
-    aAdd(aCabec,{"C7_FILIAL"  ,xFilial("SC7")  ,Nil})
-    aAdd(aCabec,{"C7_FORNECE" ,ZC1->ZC1_FORNEC ,Nil})
-    aAdd(aCabec,{"C7_LOJA"    ,ZC1->ZC1_LOJA   ,Nil})
-    aAdd(aCabec,{"C7_COND"    ,ZC1->ZC1_CONDPG ,Nil})
-    aAdd(aCabec,{"C7_EMISSAO" ,dDtEmiss        ,Nil})
-    aAdd(aCabec,{"C7_FILENT"  ,xFilial("SC7")  ,Nil})
+    aAdd(aCabec, {"C7_FILIAL"   ,xFilial("SC7")  ,Nil})
+    aAdd(aCabec, {"C7_FORNECE"  ,ZC1->ZC1_FORNEC ,Nil})
+    aAdd(aCabec, {"C7_LOJA"     ,ZC1->ZC1_LOJA   ,Nil})
+    aAdd(aCabec, {"C7_COND"     ,ZC1->ZC1_CONDPG ,Nil})
+    aAdd(aCabec, {"C7_EMISSAO"  ,dDtEmiss        ,Nil})
+    aAdd(aCabec, {"C7_FILENT"   ,xFilial("SC7")  ,Nil})
     If !Empty(cContato)
-        aAdd(aCabec,{"C7_CONTATO",cContato     ,Nil})
+        aAdd(aCabec, {"C7_CONTATO" ,cContato     ,Nil})
     EndIf
-    aAdd(aCabec,{"C7_OBS"     ,"Pedido gerado automaticamente - Contrato "+;
-                                cContrato+" - Compet. "+U_ZCTCompet(dDtEmiss),Nil})
+    aAdd(aCabec, {"C7_OBS"      ,"Contrato de Fornecedor " + cContrato + " - Compet. " + U_ZCTCompet(dDtEmiss), Nil})
 
-    aAdd(aLinha,{"C7_PRODUTO" ,ZC1->ZC1_PRODUT ,Nil})
-    aAdd(aLinha,{"C7_QUANT"   ,1               ,Nil})
-    aAdd(aLinha,{"C7_PRECO"   ,nValor          ,Nil})
-    aAdd(aLinha,{"C7_TOTAL"   ,nValor          ,Nil})
+    aAdd(aLinha, {"C7_PRODUTO" ,ZC1->ZC1_PRODUT ,Nil})
+    aAdd(aLinha, {"C7_QUANT"   ,1               ,Nil})
+    aAdd(aLinha, {"C7_PRECO"   ,nValor          ,Nil})
+    aAdd(aLinha, {"C7_TOTAL"   ,nValor          ,Nil})
     // C7_UM propositalmente NAO informado: o MATA120 obtem a unidade
     // diretamente do cadastro do produto (SB1->B1_UM).
-    aAdd(aLinha,{"C7_CC"      ,ZC1->ZC1_CC     ,Nil})
-    aAdd(aLinha,{"C7_ITEMCTA" ,xFilial("SC7")  ,Nil})
-    aAdd(aLinha,{"C7_YOPER"   ,ZC1->ZC1_YOPER  ,Nil})
+    aAdd(aLinha, {"C7_CC"      ,ZC1->ZC1_CC     ,Nil})
+    aAdd(aLinha, {"C7_ITEMCTA" ,xFilial("SC7")  ,Nil})
+    aAdd(aLinha, {"C7_YOPER"   ,ZC1->ZC1_YOPER  ,Nil})
     If !Empty(ZC1->ZC1_TES)
-        aAdd(aLinha,{"C7_TES" ,ZC1->ZC1_TES    ,Nil})
+        aAdd(aLinha, {"C7_TES" ,ZC1->ZC1_TES    ,Nil})
     EndIf
-    aAdd(aLinha,{"C7_DATPRF"  ,dDtEmiss        ,Nil})
-    aAdd(aItens,aLinha)
+    aAdd(aLinha, {"C7_DATPRF"  ,dDtEmiss        ,Nil})
+    aAdd(aItens, aLinha)
 
     // O bRotina de MSExecAuto para o MATA120 precisa do 1o parametro
     // "nFuncao" antes do cabecalho/itens - a assinatura generica usada em
@@ -216,6 +215,7 @@ User Function ZCTGeraPC(cContrato,dDtEmiss,nValor)
     EndIf
 
     ZC1->(RestArea(aArea))
+
 Return {!lMsErroAuto, cNumPC, cMsgErro}
 
 /*/{Protheus.doc} ZCTIncluiPR
