@@ -67,13 +67,22 @@ User Function ZCTNumContrato()
 Return GetSxeNum(ZCT010_TABLE,"ZC1_CONTRA")
 
 /*/{Protheus.doc} ZCTNatFornec
-Chamada em MODEL_FIELD_VALID de ZC1_LOJA: assim que o usuario digita o
-codigo e a loja do fornecedor, preenche ZC1_NATUR com a natureza
-financeira cadastrada no fornecedor (SA2->A2_NATUREZ). So sobrescreve
-quando o fornecedor/loja e encontrado e A2_NATUREZ nao esta vazio -
-mesmo assim, o usuario continua podendo alterar ZC1_NATUR livremente
-depois (nao ha MODEL_FIELD_WHEN bloqueando o campo).
-@return .T. sempre - nunca bloqueia a confirmacao do campo ZC1_LOJA
+Chamada em MODEL_FIELD_VALID de ZC1_FORNEC e de ZC1_LOJA: preenche
+ZC1_NATUR com a natureza financeira cadastrada no fornecedor
+(SA2->A2_NATUREZ). So sobrescreve quando o fornecedor/loja e encontrado
+e A2_NATUREZ nao esta vazio - mesmo assim, o usuario continua podendo
+alterar ZC1_NATUR livremente depois (nao ha MODEL_FIELD_WHEN bloqueando
+o campo).
+
+Precisa estar amarrada nos DOIS campos porque ZC1_LOJA nao tem consulta
+propria (ver especificacao_dicionario.md, coluna "Tabela" = "-"): ela e
+preenchida pelo proprio F3 padrao do fornecedor (ZC1_FORNEC, vinculado a
+SA2), que devolve codigo+loja de uma vez. Quando o usuario usa esse F3
+(fluxo normal), o framework atribui ZC1_LOJA programaticamente e NAO
+dispara o Valid dela - so o Valid de ZC1_FORNEC roda nesse caso. Ja
+quando o usuario digita a loja manualmente (sem F3), quem dispara por
+ultimo e o Valid de ZC1_LOJA. Por isso a funcao e chamada nos dois.
+@return .T. sempre - nunca bloqueia a confirmacao do campo
 /*/
 User Function ZCTNatFornec()
     Local cFornec := M->ZC1_FORNEC
@@ -108,10 +117,14 @@ Static Function ModelDef()
     oStruZC1:SetProperty("ZC1_CONTRA",MODEL_FIELD_INIT,FwBuildFeature(STRUCT_FEATURE_INIPAD,'U_ZCTNumContrato()'))
     oStruZC1:SetProperty("ZC1_CONTRA",MODEL_FIELD_WHEN,FwBuildFeature(STRUCT_FEATURE_WHEN,'.F.'))
 
-    // Ao confirmar a Loja do fornecedor (digitados fornecedor+loja), pre-
-    // enche ZC1_NATUR com a natureza financeira cadastrada no fornecedor
-    // (SA2->A2_NATUREZ) - o usuario continua podendo alterar ZC1_NATUR
-    // manualmente depois, o campo nao fica somente leitura.
+    // Ao confirmar fornecedor+loja, preenche ZC1_NATUR com a natureza
+    // financeira cadastrada no fornecedor (SA2->A2_NATUREZ) - o usuario
+    // continua podendo alterar ZC1_NATUR manualmente depois, o campo nao
+    // fica somente leitura. Amarrado nos DOIS campos (nao so ZC1_LOJA):
+    // quando o fornecedor e escolhido pelo F3 padrao (vinculado a SA2), a
+    // loja vem junto e e atribuida sem disparar o Valid dela - so o Valid
+    // de ZC1_FORNEC roda nesse caso (ver doc de U_ZCTNatFornec).
+    oStruZC1:SetProperty("ZC1_FORNEC",MODEL_FIELD_VALID,FwBuildFeature(STRUCT_FEATURE_VALID,'U_ZCTNatFornec()'))
     oStruZC1:SetProperty("ZC1_LOJA",MODEL_FIELD_VALID,FwBuildFeature(STRUCT_FEATURE_VALID,'U_ZCTNatFornec()'))
 
     // Campos preenchidos/atualizados pelo proprio sistema (framework ou
