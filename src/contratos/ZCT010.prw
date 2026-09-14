@@ -67,12 +67,14 @@ User Function ZCTNumContrato()
 Return GetSxeNum(ZCT010_TABLE,"ZC1_CONTRA")
 
 /*/{Protheus.doc} ZCTNatFornec
-Chamada em MODEL_FIELD_VALID de ZC1_FORNEC e de ZC1_LOJA: preenche
-ZC1_NATUR com a natureza financeira cadastrada no fornecedor
-(SA2->A2_NATUREZ). So sobrescreve quando o fornecedor/loja e encontrado
-e A2_NATUREZ nao esta vazio - mesmo assim, o usuario continua podendo
-alterar ZC1_NATUR livremente depois (nao ha MODEL_FIELD_WHEN bloqueando
-o campo).
+Chamada em MODEL_FIELD_VALID de ZC1_FORNEC e de ZC1_LOJA: ZC1_NATUR NAO
+e obrigatorio (sem MODEL_FIELD_WHEN nem validacao de preenchimento) - se
+o usuario ja tiver informado um valor nele, essa funcao NUNCA sobrescreve
+(so age quando M->ZC1_NATUR ainda esta vazio). So quando o usuario deixa
+o campo em branco e que a rotina busca a natureza financeira cadastrada
+no fornecedor (SA2->A2_NATUREZ) e preenche automaticamente - e mesmo
+nesse caso o usuario continua podendo digitar/alterar ZC1_NATUR livremente
+depois, a funcao so roda de novo se ele apagar o campo.
 
 Precisa estar amarrada nos DOIS campos porque ZC1_LOJA nao tem consulta
 propria (ver especificacao_dicionario.md, coluna "Tabela" = "-"): ela e
@@ -87,16 +89,16 @@ ultimo e o Valid de ZC1_LOJA. Por isso a funcao e chamada nos dois.
 User Function ZCTNatFornec()
     Local cFornec := M->ZC1_FORNEC
     Local cLoja   := M->ZC1_LOJA
-    Local aArea   := SA2->(GetArea())
+    Local aArea
 
-    If !Empty(cFornec) .And. !Empty(cLoja)
+    If Empty(M->ZC1_NATUR) .And. !Empty(cFornec) .And. !Empty(cLoja)
+        aArea := SA2->(GetArea())
         SA2->(DbSetOrder(1)) //A2_FILIAL+A2_COD+A2_LOJA
         If SA2->(DbSeek(xFilial("SA2")+cFornec+cLoja)) .And. !Empty(SA2->A2_NATUREZ)
             M->ZC1_NATUR := SA2->A2_NATUREZ
         EndIf
+        SA2->(RestArea(aArea))
     EndIf
-
-    SA2->(RestArea(aArea))
 Return .T.
 
 /*/{Protheus.doc} ModelDef
